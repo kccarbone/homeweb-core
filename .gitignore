@@ -18,5 +18,8 @@ build/
 out/
 *.tgz
 
+# Local only
+config/secrets.json
+
 # Misc
 .DS_Store
