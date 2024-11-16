@@ -5,9 +5,9 @@ import { fuzzyMatch } from '../util.js';
 class EventHandler {
   readonly id: number;
   readonly target: string;
-  readonly action: () => Promise<void>;
+  readonly action: (payload: any) => Promise<void>;
 
-  constructor(initialId: number, initialTarget: string, initialAction: () => Promise<void>) {
+  constructor(initialId: number, initialTarget: string, initialAction: (payload: any) => Promise<void>) {
     this.id = initialId;
     this.target = initialTarget;
     this.action = initialAction;
@@ -17,18 +17,20 @@ class EventHandler {
 export class EventRouter {
   private _log: bark.Logger;
   private _cxString: string;
+  private _topicBase: string;
   private _eventBus?: mqtt.MqttClient;
   private _handlers: EventHandler[];
   private _handlerSeq = 0;
 
   timeout = 3000;
 
-  constructor(username = '', password = '', host = 'localhost', port = 1883) {
+  constructor(username = '', password = '', host = 'localhost', port = 1883, topicBase = 'zigbee2mqtt') {
     this._log = bark.getLogger('event-router');
     this._handlers = [];
     this._cxString = (username && password)
       ? `mqtt://${username}:${password}@${host}:${port}`
       : `mqtt://${host}:${port}`
+    this._topicBase = topicBase;
   }
 
   async start() {
@@ -66,18 +68,19 @@ export class EventRouter {
     
     this._eventBus.on('message', this.processEvent.bind(this));
 
-    await this._eventBus.subscribeAsync('zigbee2mqtt/#');
+    await this._eventBus.subscribeAsync(`${this._topicBase}/#`);
   }
 
   private async processEvent(topic: string, message: Buffer) {
     for (const handler of this._handlers) {
-      if (fuzzyMatch(`zigbee2mqtt/${handler.target}`, topic)) {
-        await handler.action();
+      if (fuzzyMatch(`${this._topicBase}/${handler.target}`, topic)) {
+        const payload = JSON.parse(message.toString());
+        await handler.action(payload);
       }
     }
   }
 
-  addEventHandler(target: string, action: () => Promise<void>) {
+  addEventHandler(target: string, action: (payload: any) => Promise<void>) {
     const handlerId = this._handlerSeq++;
     this._handlers.push(new EventHandler(handlerId, target, action));
 
@@ -86,5 +89,14 @@ export class EventRouter {
 
   removeEventHandler(handlerId: number) {
     this._handlers = [...this._handlers.filter(x => x.id !== handlerId)];
+  }
+
+  async refreshState(target: string) {
+    await this._eventBus!.publishAsync(`${this._topicBase}/${target}/get`, '{"state": ""}');
+  }
+
+  async updateState(target: string, newState: any) {
+    const payload = JSON.stringify(newState);
+    await this._eventBus!.publishAsync(`${this._topicBase}/${target}/set`, payload);
   }
 }
