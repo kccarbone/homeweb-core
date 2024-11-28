@@ -16,8 +16,10 @@ class DeviceState {
   bri = 0
 }
 
+let lastActionTS = 0
+
 // Test device
-const deviceId = 'sw-greatroom1';
+const deviceId = 'sw-loftcloset';
 const deviceState = new DeviceState();
 
 // Test indicator
@@ -32,7 +34,8 @@ const indFadeIn = {
 };
 
 // Test API targets
-const staggerAll = 'http://10.0.0.71/stagger/asc/12'
+const staggerUp = 'http://10.0.0.71/stagger/desc/15'
+const staggerdown = 'http://10.0.0.71/stagger/asc/12'
 
 // MQTT broker
 const router = new EventRouter(
@@ -42,25 +45,32 @@ const router = new EventRouter(
   secrets.mqttPort);
 
 router.addEventHandler(deviceId, async (payload: any) => {
-  log.info('Found matching event!');
+  //log.info('Found matching event!');
   //console.log(payload);
 
   // Actions
   if (payload.action) {
-    if (payload.action === 'up_single') {
-      // Increase brightness
-      deviceState.bri = Math.min(100, deviceState.bri + 25);
+    const newTS = Math.floor(new Date().getTime() / 1000);
 
-      log.info(`Lights on (${deviceState.bri})`);
-      const result = await axios.put(`${staggerAll}/${deviceState.bri}`);
-      log.debug(`API Result: ${result.status} ${result.statusText}`);
-    }
+    // New action must be at least 1 second newer than last action (crude debounce)
+    if ((newTS - lastActionTS) > 1) {
+      lastActionTS = newTS;
 
-    if (payload.action === 'down_single') {
-      log.info('Lights off');
-      deviceState.bri = 0;
-      const result = await axios.put(`${staggerAll}/${deviceState.bri}`);
-      log.debug(`API Result: ${result.status} ${result.statusText}`);
+      if (payload.action === 'up_single') {
+        // Increase brightness
+        deviceState.bri = Math.min(100, deviceState.bri + 25);
+
+        log.info(`Lights on (${deviceState.bri})`);
+        const result = await axios.put(`${staggerUp}/${deviceState.bri}`);
+        log.debug(`API Result: ${result.status} ${result.statusText}`);
+      }
+
+      if (payload.action === 'down_single') {
+        log.info('Lights off');
+        deviceState.bri = 0;
+        const result = await axios.put(`${staggerdown}/${deviceState.bri}`);
+        log.debug(`API Result: ${result.status} ${result.statusText}`);
+      }
     }
   }
 
@@ -68,7 +78,7 @@ router.addEventHandler(deviceId, async (payload: any) => {
   if (payload.state) {
     deviceState.on = (payload.state === 'ON');
     // TODO: get current brightness from API
-    console.log(deviceState);
+    //console.log(deviceState);
   }
 });
 
