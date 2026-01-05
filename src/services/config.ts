@@ -1,15 +1,17 @@
 import fs from 'fs';
-import path from 'path';
-
-const configDir = path.join(import.meta.dirname, '../../../config');
+import { getPath, configPath } from '../util.js';
 
 interface AppConfig {
   timezone: string;
   serverPort: number;
 }
 
-export default JSON.parse(fs.readFileSync(`${configDir}/config.json`, 'utf8')) as AppConfig;
+function getAppConfig(configFile?: string) {
+  const path = configFile ? getPath(configFile) : configPath('config.json');
+  const content = fs.readFileSync(path, 'utf8');
 
+  return JSON.parse(content) as AppConfig;
+}
 
 interface SecretsConfig {
   mqttUsername: string;
@@ -18,4 +20,14 @@ interface SecretsConfig {
   mqttPort: number;
 }
 
-export const secrets = JSON.parse(fs.readFileSync(`${configDir}/secrets.json`, 'utf8')) as SecretsConfig;
+function getSecrets(configFile?: string) {
+  const path = configFile ? getPath(configFile) : configPath('secrets.json');
+  const content = fs.readFileSync(path, 'utf8');
+
+  return JSON.parse(content) as SecretsConfig;
+}
+
+export default {
+  getAppConfig,
+  getSecrets
+}

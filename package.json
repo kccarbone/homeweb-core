@@ -5,16 +5,16 @@
   "author": "Kyle Carbone",
   "license": "MIT",
   "type": "module",
-  "main": "lib/index.js",
-  "types": "lib/index.d.ts",
+  "main": "src/index.js",
+  "types": "src/index.d.ts",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/kccarbone/homeweb-core.git"
   },
   "scripts": {
-    "build": "tsc",
     "local": "tsc -w",
-    "test": "tsc && node build/index.js",
+    "build": "tsc && cp -R config build/config && cp package.json build/ && chmod +x build/tests/*.js",
+    "link": "tsc && cp -R config build/config && cp package.json build/ && (cd build/ && npm link)",
     "clean": "rm -rf build/ out/"
   },
   "dependencies": {

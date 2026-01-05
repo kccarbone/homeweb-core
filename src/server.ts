@@ -9,13 +9,14 @@ import { fuzzyMatch } from './util.js';
 
 // Global state
 const appName = 'homeweb-server';
+const settings = config.getAppConfig();
 const log = bark.getLogger(appName);
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ noServer: true });
 
 // Global config
-process.env.TZ = config.timezone;
+process.env.TZ = settings.timezone;
 bark.config.threshold = env.LOGLEVEL ?? bark.Levels.DEBUG;
 
 // HTTP requests
@@ -54,8 +55,8 @@ setInterval(() => {
 }, 1000);
 
 // Start server!
-server.listen(config.serverPort)
-log.info(`Server running on port ${config.serverPort}`);
+server.listen(settings.serverPort)
+log.info(`Server running on port ${settings.serverPort}`);
 
 // Clean up on exit
 process.on('SIGINT', () => {
